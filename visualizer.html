@@ -1,0 +1,1051 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Engineering Visualizer — Jamieson Omeire</title>
+<style>
+:root {
+  --bg: #1a1a1f;
+  --bg2: #22222a;
+  --bg3: #2a2a35;
+  --purple: #a855f7;
+  --purple-light: #c084fc;
+  --purple-dim: #7c3aed;
+  --purple-border: rgba(168,85,247,0.3);
+  --charcoal: #3a3a4a;
+  --text: #f0eef8;
+  --text-muted: #9990b8;
+  --text-dim: #6b6485;
+  --card-bg: rgba(34,34,42,0.8);
+  --green: #22c55e;
+  --amber: #f59e0b;
+  --red: #ef4444;
+}
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html { scroll-behavior: smooth; }
+body { background: var(--bg); color: var(--text); font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; font-weight: 300; line-height: 1.6; min-height: 100vh; }
+
+/* NAV */
+nav {
+  position: sticky; top: 0; z-index: 100;
+  display: flex; justify-content: space-between; align-items: center;
+  padding: 1rem 2.5rem;
+  background: rgba(26,26,31,0.97); backdrop-filter: blur(16px);
+  border-bottom: 1px solid rgba(168,85,247,0.15);
+}
+.nav-brand { display: flex; align-items: center; gap: 1rem; }
+.back-link {
+  font-size: 0.72rem; letter-spacing: 0.1em; text-transform: uppercase;
+  color: var(--text-muted); text-decoration: none;
+  display: flex; align-items: center; gap: 0.35rem;
+  transition: color 0.2s;
+}
+.back-link:hover { color: var(--purple-light); }
+.nav-sep { color: var(--charcoal); margin: 0 0.25rem; }
+.nav-title { font-size: 0.85rem; font-weight: 600; color: var(--text); letter-spacing: 0.05em; }
+.nav-title span { color: var(--purple); }
+
+/* HERO */
+.viz-hero {
+  padding: 3rem 2.5rem 0;
+  max-width: 1200px; margin: 0 auto;
+}
+.viz-eyebrow {
+  font-size: 0.72rem; letter-spacing: 0.2em; text-transform: uppercase;
+  color: var(--purple); margin-bottom: 0.75rem;
+}
+.viz-title {
+  font-size: clamp(2rem, 5vw, 3.5rem); font-weight: 800;
+  color: var(--text); margin-bottom: 0.75rem; line-height: 1;
+}
+.viz-desc {
+  font-size: 0.95rem; color: var(--text-muted);
+  max-width: 560px; margin-bottom: 2rem; line-height: 1.7;
+}
+
+/* TABS */
+.tab-nav {
+  display: flex; gap: 0;
+  border-bottom: 1px solid var(--charcoal);
+  background: var(--bg2);
+  padding: 0 2.5rem;
+  overflow-x: auto;
+}
+.tab-btn {
+  font-size: 0.72rem; letter-spacing: 0.1em; text-transform: uppercase;
+  padding: 1rem 1.5rem;
+  background: transparent; border: none;
+  border-bottom: 2px solid transparent;
+  color: var(--text-muted); cursor: pointer;
+  transition: all 0.2s; margin-bottom: -1px;
+  white-space: nowrap;
+}
+.tab-btn:hover { color: var(--purple-light); }
+.tab-btn.active { color: var(--purple); border-bottom-color: var(--purple); }
+
+/* PANELS */
+.panel { display: none; padding: 2.5rem; max-width: 1200px; margin: 0 auto; }
+.panel.active { display: block; }
+
+/* LAYOUT */
+.tool-layout {
+  display: grid;
+  grid-template-columns: 300px 1fr;
+  gap: 2rem; align-items: start;
+}
+@media (max-width: 900px) { .tool-layout { grid-template-columns: 1fr; } }
+
+/* CONTROLS */
+.controls-card {
+  background: var(--card-bg);
+  border: 1px solid var(--charcoal);
+  border-radius: 8px; padding: 1.5rem;
+  position: sticky; top: 80px;
+}
+.controls-card h3 {
+  font-size: 0.68rem; letter-spacing: 0.15em; text-transform: uppercase;
+  color: var(--purple); margin-bottom: 1.2rem;
+}
+.form-group { margin-bottom: 1.1rem; }
+.form-group label {
+  display: block; font-size: 0.72rem;
+  letter-spacing: 0.05em; color: var(--text-muted);
+  margin-bottom: 0.35rem;
+}
+.form-group select,
+.form-group input[type=number] {
+  width: 100%;
+  background: var(--bg3); border: 1px solid var(--charcoal);
+  border-radius: 4px; color: var(--text);
+  font-size: 0.85rem; padding: 0.5rem 0.7rem;
+  outline: none; transition: border-color 0.2s;
+}
+.form-group select:focus,
+.form-group input:focus { border-color: var(--purple-border); }
+.form-group input[type=range] {
+  width: 100%; padding: 0.3rem 0;
+  accent-color: var(--purple);
+  background: transparent; border: none; outline: none;
+  cursor: pointer;
+}
+.val-display {
+  font-size: 0.75rem; color: var(--purple-light); float: right; font-weight: 500;
+}
+
+/* RESULTS */
+.results-row {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 1rem; margin-top: 1.5rem;
+}
+.results-row.two { grid-template-columns: 1fr 1fr; }
+.result-card {
+  background: var(--bg3); border: 1px solid var(--charcoal);
+  border-radius: 6px; padding: 1rem; text-align: center;
+}
+.result-card .rlabel {
+  font-size: 0.65rem; letter-spacing: 0.1em;
+  text-transform: uppercase; color: var(--text-dim); margin-bottom: 0.4rem;
+}
+.result-card .rvalue { font-size: 1.2rem; font-weight: 700; color: var(--purple-light); }
+.result-card .runit { font-size: 0.7rem; color: var(--text-dim); }
+
+/* VIZ CARDS */
+.viz-card {
+  background: var(--card-bg); border: 1px solid var(--charcoal);
+  border-radius: 8px; padding: 1.5rem; margin-bottom: 1rem;
+}
+.viz-card:last-child { margin-bottom: 0; }
+.viz-label {
+  font-size: 0.65rem; letter-spacing: 0.15em;
+  text-transform: uppercase; color: var(--text-dim); margin-bottom: 0.75rem;
+}
+svg text { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; }
+
+/* STATUS */
+.vessel-status {
+  display: flex; align-items: center;
+  font-size: 0.85rem; color: var(--text);
+  margin-top: 1rem; padding: 0.75rem 1rem;
+  border-radius: 6px; border: 1px solid var(--charcoal);
+  background: var(--bg3);
+}
+.status-dot {
+  display: inline-block; width: 8px; height: 8px;
+  border-radius: 50%; margin-right: 0.5rem; flex-shrink: 0;
+}
+.status-ok  { background: var(--green);  box-shadow: 0 0 8px rgba(34,197,94,0.5); }
+.status-warn { background: var(--amber); box-shadow: 0 0 8px rgba(245,158,11,0.5); }
+.status-err  { background: var(--red);   box-shadow: 0 0 8px rgba(239,68,68,0.5); }
+
+.stress-legend { display: flex; gap: 1rem; flex-wrap: wrap; margin-top: 0.75rem; }
+.legend-item { display: flex; align-items: center; gap: 0.4rem; font-size: 0.7rem; color: var(--text-muted); }
+.legend-swatch { width: 12px; height: 12px; border-radius: 2px; }
+
+/* DASHBOARD */
+.section-title-sm { font-size: clamp(1.6rem,4vw,2.5rem); font-weight: 800; color: var(--text); margin-bottom: 0.5rem; }
+.section-sub { font-size: 0.9rem; color: var(--text-muted); margin-bottom: 2rem; line-height: 1.7; max-width: 640px; }
+
+.metrics-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 1.25rem; margin-bottom: 2rem;
+}
+.metric-card {
+  background: var(--card-bg); border: 1px solid var(--charcoal);
+  border-radius: 8px; padding: 1.5rem; text-align: center;
+  position: relative; overflow: hidden;
+}
+.metric-card::before {
+  content: ''; position: absolute; top: 0; left: 0; right: 0; height: 2px;
+  background: linear-gradient(90deg, var(--purple-dim), var(--purple));
+}
+.metric-number { font-size: 2.4rem; font-weight: 800; color: var(--purple-light); line-height: 1; }
+.metric-label { font-size: 0.72rem; letter-spacing: 0.04em; color: var(--text-muted); margin-top: 0.5rem; }
+.metric-sub { font-size: 0.65rem; color: var(--text-dim); margin-top: 0.25rem; }
+
+.chart-card {
+  background: var(--card-bg); border: 1px solid var(--charcoal);
+  border-radius: 8px; padding: 1.5rem; margin-bottom: 1.5rem;
+}
+.chart-card h3 {
+  font-size: 0.72rem; letter-spacing: 0.1em;
+  text-transform: uppercase; color: var(--purple); margin-bottom: 1.5rem;
+}
+.bar-chart { display: flex; flex-direction: column; gap: 0.8rem; }
+.bar-row { display: flex; align-items: center; gap: 1rem; }
+.bar-label {
+  font-size: 0.78rem; color: var(--text-muted);
+  width: 160px; flex-shrink: 0; text-align: right;
+}
+.bar-track {
+  flex: 1; height: 30px; background: var(--bg3);
+  border-radius: 4px; overflow: hidden; position: relative;
+}
+.bar-fill {
+  height: 100%; border-radius: 4px;
+  transition: width 1.6s cubic-bezier(0.25,0.46,0.45,0.94);
+  display: flex; align-items: center;
+  padding-right: 0.6rem; justify-content: flex-end;
+  min-width: 0;
+}
+.bar-fill span { font-size: 0.7rem; font-weight: 600; color: #fff; white-space: nowrap; }
+</style>
+</head>
+<body>
+
+<!-- NAV -->
+<nav>
+  <div class="nav-brand">
+    <a href="index.html" class="back-link">&#8592; Portfolio</a>
+    <span class="nav-sep">|</span>
+    <span class="nav-title">Engineering <span>Visualizer</span></span>
+  </div>
+</nav>
+
+<!-- HERO -->
+<div class="viz-hero">
+  <p class="viz-eyebrow">Interactive Tools</p>
+  <h1 class="viz-title">Engineering<br>Visualizer</h1>
+  <p class="viz-desc">Structural beam analysis, ASME pressure vessel calculations, and project impact metrics — all computed client-side, in real time.</p>
+</div>
+
+<!-- TABS -->
+<div class="tab-nav">
+  <button class="tab-btn active" onclick="switchTab('beam',this)">&#9651; Beam Analysis</button>
+  <button class="tab-btn" onclick="switchTab('vessel',this)">&#9711; Pressure Vessel</button>
+  <button class="tab-btn" onclick="switchTab('dashboard',this)">&#9638; Impact Dashboard</button>
+</div>
+
+<!-- ======================================================= -->
+<!-- BEAM ANALYSIS                                           -->
+<!-- ======================================================= -->
+<div id="panel-beam" class="panel active">
+  <div class="tool-layout">
+
+    <!-- Controls -->
+    <div>
+      <div class="controls-card">
+        <h3>Parameters</h3>
+
+        <div class="form-group">
+          <label>Beam Configuration</label>
+          <select id="beamType" onchange="updateBeam()">
+            <option value="ss">Simply Supported — Point Load</option>
+            <option value="ss-udl">Simply Supported — Uniform Load</option>
+            <option value="cant">Cantilever — Point Load (free end)</option>
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label>Length (L) <span class="val-display" id="lenVal">5.0 m</span></label>
+          <input type="range" id="beamLen" min="1" max="20" step="0.5" value="5" oninput="updateBeam()">
+        </div>
+
+        <div class="form-group" id="loadPosGroup">
+          <label>Load Position (a/L) <span class="val-display" id="loadPosVal">0.50</span></label>
+          <input type="range" id="loadPos" min="0.05" max="0.95" step="0.05" value="0.5" oninput="updateBeam()">
+        </div>
+
+        <div class="form-group">
+          <label>Load Magnitude <span class="val-display" id="loadVal">10 kN</span></label>
+          <input type="range" id="loadMag" min="1" max="200" step="1" value="10" oninput="updateBeam()">
+        </div>
+
+        <div class="form-group">
+          <label>Material (E)</label>
+          <select id="eMod" onchange="updateBeam()">
+            <option value="200">Steel — 200 GPa</option>
+            <option value="70">Aluminum — 70 GPa</option>
+            <option value="110">Titanium — 110 GPa</option>
+            <option value="10">GFRP — 10 GPa</option>
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label>Section (I)</label>
+          <select id="section" onchange="updateBeam()">
+            <option value="45.5e-6">W200×46 — 45.5×10⁻⁶ m⁴</option>
+            <option value="274e-6">W310×60 — 274×10⁻⁶ m⁴</option>
+            <option value="5.28e-6">W150×24 — 5.28×10⁻⁶ m⁴</option>
+            <option value="1e-6">Light section — 1×10⁻⁶ m⁴</option>
+            <option value="100e-6">Heavy section — 100×10⁻⁶ m⁴</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="results-row" style="margin-top:1.5rem">
+        <div class="result-card">
+          <div class="rlabel">Max Deflection</div>
+          <div class="rvalue" id="resDefl">—</div>
+          <div class="runit">mm</div>
+        </div>
+        <div class="result-card">
+          <div class="rlabel">Max Moment</div>
+          <div class="rvalue" id="resMoment">—</div>
+          <div class="runit">kN·m</div>
+        </div>
+        <div class="result-card">
+          <div class="rlabel">Max Shear</div>
+          <div class="rvalue" id="resShear">—</div>
+          <div class="runit">kN</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Visualizations -->
+    <div>
+      <div class="viz-card">
+        <div class="viz-label">Beam Diagram</div>
+        <svg id="beamDiagram" width="100%" height="160" viewBox="0 0 700 160" preserveAspectRatio="xMidYMid meet"></svg>
+      </div>
+      <div class="viz-card">
+        <div class="viz-label">Deflection Curve (amplified for clarity)</div>
+        <svg id="deflSvg" width="100%" height="140" viewBox="0 0 700 140" preserveAspectRatio="xMidYMid meet"></svg>
+      </div>
+      <div class="viz-card">
+        <div class="viz-label">Bending Moment Diagram</div>
+        <svg id="bmdSvg" width="100%" height="130" viewBox="0 0 700 130" preserveAspectRatio="xMidYMid meet"></svg>
+      </div>
+      <div class="viz-card">
+        <div class="viz-label">Shear Force Diagram</div>
+        <svg id="sfdSvg" width="100%" height="130" viewBox="0 0 700 130" preserveAspectRatio="xMidYMid meet"></svg>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ======================================================= -->
+<!-- PRESSURE VESSEL                                         -->
+<!-- ======================================================= -->
+<div id="panel-vessel" class="panel">
+  <div class="tool-layout">
+
+    <!-- Controls -->
+    <div>
+      <div class="controls-card">
+        <h3>ASME VIII-1 Parameters</h3>
+
+        <div class="form-group">
+          <label>Component Geometry</label>
+          <select id="vesselType" onchange="updateVessel()">
+            <option value="cyl">Cylindrical Shell</option>
+            <option value="hemi">Hemispherical Head</option>
+            <option value="ellips">2:1 Ellipsoidal Head</option>
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label>Inner Radius (R) <span class="val-display" id="vRadVal">500 mm</span></label>
+          <input type="range" id="vRad" min="50" max="2000" step="25" value="500" oninput="updateVessel()">
+        </div>
+
+        <div class="form-group">
+          <label>Wall Thickness (t) <span class="val-display" id="vThkVal">25 mm</span></label>
+          <input type="range" id="vThk" min="3" max="150" step="1" value="25" oninput="updateVessel()">
+        </div>
+
+        <div class="form-group">
+          <label>Allowable Stress (S)</label>
+          <select id="vStress" onchange="updateVessel()">
+            <option value="138">SA-516 Gr.70 @ 250°C — 138 MPa</option>
+            <option value="165">SA-516 Gr.70 @ RT — 165 MPa</option>
+            <option value="117">SA-516 Gr.60 @ 250°C — 117 MPa</option>
+            <option value="120">SA-240 304 SS @ 300°C — 120 MPa</option>
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label>Joint Efficiency (E) <span class="val-display" id="vJointVal">1.00</span></label>
+          <input type="range" id="vJoint" min="0.6" max="1.0" step="0.05" value="1.0" oninput="updateVessel()">
+        </div>
+
+        <div class="form-group">
+          <label>Operating Pressure <span class="val-display" id="vPressVal">5.0 MPa</span></label>
+          <input type="range" id="vPress" min="0.5" max="30" step="0.5" value="5" oninput="updateVessel()">
+        </div>
+      </div>
+
+      <div class="results-row two" style="margin-top:1.5rem">
+        <div class="result-card">
+          <div class="rlabel">MAWP</div>
+          <div class="rvalue" id="resMawp">—</div>
+          <div class="runit">MPa</div>
+        </div>
+        <div class="result-card">
+          <div class="rlabel">Min t Required</div>
+          <div class="rvalue" id="resMinThk">—</div>
+          <div class="runit">mm</div>
+        </div>
+      </div>
+      <div class="results-row two" style="margin-top:1rem">
+        <div class="result-card">
+          <div class="rlabel">Hoop Stress</div>
+          <div class="rvalue" id="resHoop">—</div>
+          <div class="runit">MPa</div>
+        </div>
+        <div class="result-card">
+          <div class="rlabel">Axial Stress</div>
+          <div class="rvalue" id="resAxial">—</div>
+          <div class="runit">MPa</div>
+        </div>
+      </div>
+
+      <div class="vessel-status" id="vesselStatus">
+        <span class="status-dot status-ok" id="statusDot"></span>
+        <span id="vesselStatusText">Vessel meets code requirements</span>
+      </div>
+
+      <div class="stress-legend" style="margin-top:0.75rem">
+        <div class="legend-item"><div class="legend-swatch" style="background:#22c55e"></div>Safe (&lt;80% MAWP)</div>
+        <div class="legend-item"><div class="legend-swatch" style="background:#f59e0b"></div>Elevated (80–100%)</div>
+        <div class="legend-item"><div class="legend-swatch" style="background:#ef4444"></div>Exceeds MAWP</div>
+      </div>
+    </div>
+
+    <!-- SVG vessel -->
+    <div>
+      <div class="viz-card">
+        <div class="viz-label">Cross-Section — Stress Visualization</div>
+        <svg id="vesselSvg" width="100%" height="480" viewBox="0 0 600 480" preserveAspectRatio="xMidYMid meet"></svg>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ======================================================= -->
+<!-- IMPACT DASHBOARD                                        -->
+<!-- ======================================================= -->
+<div id="panel-dashboard" class="panel">
+  <h2 class="section-title-sm">Engineering Impact</h2>
+  <p class="section-sub">Quantified outcomes from industry experience at Zoox, Bruce Power, and OPG — turning complex engineering problems into measurable results.</p>
+
+  <div class="metrics-grid">
+    <div class="metric-card">
+      <div class="metric-number"><span class="count-up" data-target="99.6" data-suffix="%">0%</span></div>
+      <div class="metric-label">Validation Time Reduction</div>
+      <div class="metric-sub">3–7 days → &lt;10 min (Zoox)</div>
+    </div>
+    <div class="metric-card">
+      <div class="metric-number"><span class="count-up" data-target="40" data-suffix="x">0x</span></div>
+      <div class="metric-label">Test Throughput Increase</div>
+      <div class="metric-sub">1 → 25–40 tests/day (Zoox)</div>
+    </div>
+    <div class="metric-card">
+      <div class="metric-number"><span class="count-up" data-target="20" data-suffix="+">0+</span></div>
+      <div class="metric-label">Pressure Vessels Assessed</div>
+      <div class="metric-sub">ASME BPVC §VIII &amp; §III (Bruce Power)</div>
+    </div>
+    <div class="metric-card">
+      <div class="metric-number"><span class="count-up" data-target="30" data-suffix="+">0+</span></div>
+      <div class="metric-label">FMEA Components Analyzed</div>
+      <div class="metric-sub">Safety-critical LZC systems (OPG)</div>
+    </div>
+  </div>
+
+  <div class="chart-card">
+    <h3>Test Throughput — Before vs. After Portable Validation Platform (Zoox)</h3>
+    <div class="bar-chart">
+      <div class="bar-row">
+        <span class="bar-label">Before (manual)</span>
+        <div class="bar-track">
+          <div class="bar-fill" style="width:0%;background:linear-gradient(90deg,#3a3a4a,#6b6485)" data-width="2.5%">
+            <span>1–2 tests/day</span>
+          </div>
+        </div>
+      </div>
+      <div class="bar-row">
+        <span class="bar-label">After (JO platform)</span>
+        <div class="bar-track">
+          <div class="bar-fill" style="width:0%;background:linear-gradient(90deg,var(--purple-dim),var(--purple))" data-width="100%">
+            <span>25–40 tests/day</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="chart-card">
+    <h3>Validation Lead Time Comparison</h3>
+    <div class="bar-chart">
+      <div class="bar-row">
+        <span class="bar-label">Legacy process (days)</span>
+        <div class="bar-track">
+          <div class="bar-fill" style="width:0%;background:linear-gradient(90deg,#3a3a4a,#6b6485)" data-width="100%">
+            <span>3–7 days</span>
+          </div>
+        </div>
+      </div>
+      <div class="bar-row">
+        <span class="bar-label">New platform (minutes)</span>
+        <div class="bar-track">
+          <div class="bar-fill" style="width:0%;background:linear-gradient(90deg,var(--purple-dim),var(--purple))" data-width="0.25%">
+            <span style="color:var(--purple-light);position:absolute;left:calc(0.25% + 4px);">&lt;10 min</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="chart-card">
+    <h3>Engineering Domains &amp; Standards</h3>
+    <div class="bar-chart">
+      <div class="bar-row">
+        <span class="bar-label">Autonomous Vehicles</span>
+        <div class="bar-track">
+          <div class="bar-fill" style="width:0%;background:linear-gradient(90deg,var(--purple-dim),var(--purple))" data-width="90%">
+            <span>HiL · CAN/UDS · ISO 14229</span>
+          </div>
+        </div>
+      </div>
+      <div class="bar-row">
+        <span class="bar-label">Nuclear Energy</span>
+        <div class="bar-track">
+          <div class="bar-fill" style="width:0%;background:linear-gradient(90deg,var(--purple-dim),var(--purple))" data-width="85%">
+            <span>ASME BPVC · CNSC · FMEA</span>
+          </div>
+        </div>
+      </div>
+      <div class="bar-row">
+        <span class="bar-label">Robotics &amp; FSAE</span>
+        <div class="bar-track">
+          <div class="bar-fill" style="width:0%;background:linear-gradient(90deg,var(--purple-dim),var(--purple))" data-width="75%">
+            <span>Suspension · Humanoid VR</span>
+          </div>
+        </div>
+      </div>
+      <div class="bar-row">
+        <span class="bar-label">Pharma Manufacturing</span>
+        <div class="bar-track">
+          <div class="bar-fill" style="width:0%;background:linear-gradient(90deg,var(--purple-dim),var(--purple))" data-width="60%">
+            <span>GMP · IQ/OQ/PQ</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+'use strict';
+
+// ============================================================
+// TAB SWITCHING
+// ============================================================
+function switchTab(name, btn) {
+  document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById('panel-' + name).classList.add('active');
+  btn.classList.add('active');
+  if (name === 'dashboard') animateDashboard();
+}
+
+// ============================================================
+// SVG HELPERS
+// ============================================================
+const NS = 'http://www.w3.org/2000/svg';
+
+function el(tag, attrs, textContent) {
+  const e = document.createElementNS(NS, tag);
+  for (const [k, v] of Object.entries(attrs)) e.setAttribute(k, v);
+  if (textContent !== undefined) e.textContent = textContent;
+  return e;
+}
+
+function clearSvg(id) {
+  const svg = document.getElementById(id);
+  while (svg.firstChild) svg.removeChild(svg.firstChild);
+  return svg;
+}
+
+// ============================================================
+// BEAM ANALYSIS
+// ============================================================
+const BX0 = 60, BX1 = 640, BW = 580;
+
+function updateBeam() {
+  const type   = document.getElementById('beamType').value;
+  const L      = parseFloat(document.getElementById('beamLen').value);
+  const aRatio = parseFloat(document.getElementById('loadPos').value);
+  const P      = parseFloat(document.getElementById('loadMag').value) * 1e3; // N or N/m
+  const E      = parseFloat(document.getElementById('eMod').value) * 1e9;    // Pa
+  const I      = parseFloat(document.getElementById('section').value);       // m⁴
+
+  // Update labels
+  document.getElementById('lenVal').textContent = L.toFixed(1) + ' m';
+  document.getElementById('loadPosVal').textContent = aRatio.toFixed(2);
+  document.getElementById('loadVal').textContent =
+    (P / 1e3).toFixed(0) + (type === 'ss-udl' ? ' kN/m' : ' kN');
+
+  // Show/hide load position slider
+  document.getElementById('loadPosGroup').style.display =
+    type === 'ss-udl' ? 'none' : 'block';
+
+  const a = aRatio * L;
+  const b = L - a;
+  const N = 300;
+  const xs = Array.from({length: N + 1}, (_, i) => i * L / N);
+  const moments = [], shears = [], deflections = [];
+
+  if (type === 'ss') {
+    // Simply supported, point load P at position a from left
+    const R1 = P * b / L;
+    for (const x of xs) {
+      const M = x <= a ? R1 * x : R1 * x - P * (x - a);
+      const V = x < a  ? R1     : R1 - P;
+      let y;
+      if (x <= a) {
+        y = P * b * x / (6 * L * E * I) * (L*L - b*b - x*x);
+      } else {
+        y = P * a * (L - x) / (6 * L * E * I) * (2*L*x - x*x - a*a);
+      }
+      moments.push(M); shears.push(V); deflections.push(y);
+    }
+  } else if (type === 'ss-udl') {
+    // Simply supported, uniform distributed load w
+    const w = P;
+    for (const x of xs) {
+      const M = w * x * (L - x) / 2;
+      const V = w * (L / 2 - x);
+      const y = w * x / (24 * E * I) * (L*L*L - 2*L*x*x + x*x*x);
+      moments.push(M); shears.push(V); deflections.push(y);
+    }
+  } else {
+    // Cantilever, point load P at free end (x = L), fixed at x = 0
+    for (const x of xs) {
+      const M = -P * (L - x);
+      const V = -P;
+      const y = P * x * x / (6 * E * I) * (3 * L - x);
+      moments.push(M); shears.push(V); deflections.push(y);
+    }
+  }
+
+  const maxDefl   = Math.max(...deflections.map(Math.abs));
+  const maxMoment = Math.max(...moments.map(Math.abs));
+  const maxShear  = Math.max(...shears.map(Math.abs));
+
+  document.getElementById('resDefl').textContent   = (maxDefl * 1e3).toFixed(2);
+  document.getElementById('resMoment').textContent = (maxMoment / 1e3).toFixed(2);
+  document.getElementById('resShear').textContent  = (maxShear / 1e3).toFixed(2);
+
+  drawBeamDiagram(type, L, a, P);
+  drawCurve('deflSvg', xs, deflections, L, '#a855f7', true);
+  drawCurve('bmdSvg',  xs, moments,    L, '#c084fc', false);
+  drawCurve('sfdSvg',  xs, shears,     L, '#7c3aed', false);
+}
+
+function drawBeamDiagram(type, L, a, P) {
+  const svg = clearSvg('beamDiagram');
+  const yB = 80; // beam centerline
+
+  // Background grid line
+  svg.appendChild(el('line', {
+    x1: BX0 - 10, y1: yB, x2: BX1 + 10, y2: yB,
+    stroke: 'rgba(168,85,247,0.08)', 'stroke-width': 1
+  }));
+
+  // Beam body
+  svg.appendChild(el('rect', {
+    x: BX0, y: yB - 7, width: BW, height: 14, rx: 2,
+    fill: '#3a3a4a', stroke: '#a855f7', 'stroke-width': 1.5
+  }));
+
+  // Length label + dimension line
+  svg.appendChild(el('line', {
+    x1: BX0, y1: 130, x2: BX1, y2: 130,
+    stroke: '#3a3a4a', 'stroke-width': 1, 'stroke-dasharray': '3,3'
+  }));
+  svg.appendChild(el('text', {
+    x: BX0 + BW / 2, y: 145,
+    fill: '#9990b8', 'font-size': 11, 'text-anchor': 'middle'
+  }, 'L = ' + L.toFixed(1) + ' m'));
+
+  if (type === 'ss' || type === 'ss-udl') {
+    drawPinSupport(svg, BX0, yB + 7);
+    drawRollerSupport(svg, BX1, yB + 7);
+  } else {
+    drawFixedSupport(svg, BX0, yB);
+  }
+
+  if (type === 'ss') {
+    const xLoad = BX0 + (a / L) * BW;
+    drawLoadArrow(svg, xLoad, yB - 7, 28, '#c084fc', (P / 1e3).toFixed(0) + ' kN');
+    svg.appendChild(el('text', {
+      x: BX0 + (a / L) * BW / 2 + 10, y: 60,
+      fill: '#6b6485', 'font-size': 10, 'text-anchor': 'middle'
+    }, 'a = ' + a.toFixed(2) + ' m'));
+  } else if (type === 'ss-udl') {
+    for (let i = 0; i <= 9; i++) {
+      drawLoadArrow(svg, BX0 + i * BW / 9, yB - 7, 20, 'rgba(192,132,252,0.7)');
+    }
+    // UDL top line
+    svg.appendChild(el('line', {
+      x1: BX0, y1: yB - 27, x2: BX1, y2: yB - 27,
+      stroke: 'rgba(192,132,252,0.5)', 'stroke-width': 1.5
+    }));
+    svg.appendChild(el('text', {
+      x: BX0 + BW / 2, y: yB - 32,
+      fill: '#c084fc', 'font-size': 10, 'text-anchor': 'middle'
+    }, 'w = ' + (P / 1e3).toFixed(0) + ' kN/m'));
+  } else {
+    drawLoadArrow(svg, BX1, yB - 7, 28, '#c084fc', (P / 1e3).toFixed(0) + ' kN');
+  }
+}
+
+function drawPinSupport(svg, cx, cy) {
+  svg.appendChild(el('polygon', {
+    points: `${cx},${cy} ${cx - 10},${cy + 18} ${cx + 10},${cy + 18}`,
+    fill: 'none', stroke: '#a855f7', 'stroke-width': 1.5
+  }));
+  svg.appendChild(el('line', {
+    x1: cx - 14, y1: cy + 18, x2: cx + 14, y2: cy + 18,
+    stroke: '#a855f7', 'stroke-width': 1.5
+  }));
+}
+
+function drawRollerSupport(svg, cx, cy) {
+  svg.appendChild(el('polygon', {
+    points: `${cx},${cy} ${cx - 10},${cy + 15} ${cx + 10},${cy + 15}`,
+    fill: 'none', stroke: '#a855f7', 'stroke-width': 1.5
+  }));
+  svg.appendChild(el('circle', {
+    cx, cy: cy + 19, r: 4,
+    fill: 'none', stroke: '#a855f7', 'stroke-width': 1.5
+  }));
+  svg.appendChild(el('line', {
+    x1: cx - 14, y1: cy + 24, x2: cx + 14, y2: cy + 24,
+    stroke: '#a855f7', 'stroke-width': 1.5
+  }));
+}
+
+function drawFixedSupport(svg, cx, cy) {
+  svg.appendChild(el('rect', {
+    x: cx - 18, y: cy - 30, width: 18, height: 60,
+    fill: '#2a2a35', stroke: '#a855f7', 'stroke-width': 1.5
+  }));
+  for (let i = -22; i < 24; i += 8) {
+    svg.appendChild(el('line', {
+      x1: cx - 18, y1: cy + i, x2: cx - 26, y2: cy + i + 8,
+      stroke: '#6b6485', 'stroke-width': 1
+    }));
+  }
+}
+
+function drawLoadArrow(svg, x, tipY, len, color, label) {
+  svg.appendChild(el('line', {
+    x1: x, y1: tipY - len, x2: x, y2: tipY,
+    stroke: color, 'stroke-width': 1.8
+  }));
+  svg.appendChild(el('polygon', {
+    points: `${x},${tipY} ${x - 5},${tipY - 9} ${x + 5},${tipY - 9}`,
+    fill: color
+  }));
+  if (label) {
+    svg.appendChild(el('text', {
+      x: x + 8, y: tipY - len / 2,
+      fill: color, 'font-size': 10
+    }, label));
+  }
+}
+
+function drawCurve(svgId, xs, ys, L, color, flipSign) {
+  const svg = clearSvg(svgId);
+  const W = BW, x0 = BX0, yMid = 70;
+
+  // Zero axis
+  svg.appendChild(el('line', {
+    x1: x0, y1: yMid, x2: x0 + W, y2: yMid,
+    stroke: '#3a3a4a', 'stroke-width': 1
+  }));
+
+  const maxAbs = Math.max(...ys.map(Math.abs), 1e-12);
+  const scale = 48 / maxAbs;
+  const sign = flipSign ? -1 : 1;
+
+  const pts = xs.map((x, i) => {
+    const px = x0 + (x / L) * W;
+    const py = yMid - ys[i] * scale * sign;
+    return `${px.toFixed(1)},${py.toFixed(1)}`;
+  });
+
+  // Fill
+  svg.appendChild(el('polygon', {
+    points: `${x0},${yMid} ${pts.join(' ')} ${x0 + W},${yMid}`,
+    fill: color, opacity: '0.12'
+  }));
+
+  // Curve
+  svg.appendChild(el('polyline', {
+    points: pts.join(' '),
+    fill: 'none', stroke: color, 'stroke-width': 2, 'stroke-linejoin': 'round'
+  }));
+
+  // X-axis ticks & labels
+  for (let i = 0; i <= 4; i++) {
+    const px = x0 + i * W / 4;
+    svg.appendChild(el('line', {
+      x1: px, y1: yMid - 3, x2: px, y2: yMid + 3,
+      stroke: '#3a3a4a', 'stroke-width': 1
+    }));
+    svg.appendChild(el('text', {
+      x: px, y: 122,
+      fill: '#6b6485', 'font-size': 9, 'text-anchor': 'middle'
+    }, (i * L / 4).toFixed(1) + 'm'));
+  }
+}
+
+// ============================================================
+// PRESSURE VESSEL (ASME VIII-1)
+// ============================================================
+function updateVessel() {
+  const type  = document.getElementById('vesselType').value;
+  const R     = parseFloat(document.getElementById('vRad').value);    // mm
+  const t     = parseFloat(document.getElementById('vThk').value);    // mm
+  const S     = parseFloat(document.getElementById('vStress').value); // MPa
+  const Ejt   = parseFloat(document.getElementById('vJoint').value);  // dimensionless
+  const Poper = parseFloat(document.getElementById('vPress').value);  // MPa
+
+  document.getElementById('vRadVal').textContent   = R + ' mm';
+  document.getElementById('vThkVal').textContent   = t + ' mm';
+  document.getElementById('vJointVal').textContent = Ejt.toFixed(2);
+  document.getElementById('vPressVal').textContent = Poper.toFixed(1) + ' MPa';
+
+  let mawp, tMin, hoopStress, axialStress;
+
+  if (type === 'cyl') {
+    // UG-27(c)(1): cylindrical shell
+    mawp       = S * Ejt * t / (R + 0.6 * t);
+    tMin       = Poper * R / (S * Ejt - 0.6 * Poper);
+    hoopStress = Poper * R / t;
+    axialStress= Poper * R / (2 * t);
+  } else if (type === 'hemi') {
+    // UG-27(d): hemispherical head
+    mawp       = 2 * S * Ejt * t / (R + 0.2 * t);
+    tMin       = Poper * R / (2 * S * Ejt - 0.2 * Poper);
+    hoopStress = Poper * R / (2 * t);
+    axialStress= Poper * R / (2 * t);
+  } else {
+    // UG-32(d): 2:1 ellipsoidal head (K=1, D=2R)
+    const D = 2 * R;
+    mawp       = 2 * S * Ejt * t / (D + 1.2 * t);
+    tMin       = Poper * D / (2 * S * Ejt - 0.2 * Poper);
+    hoopStress = Poper * D / (2 * t);
+    axialStress= Poper * D / (4 * t);
+  }
+
+  document.getElementById('resMawp').textContent   = mawp.toFixed(2);
+  document.getElementById('resMinThk').textContent = Math.max(tMin, 0).toFixed(1);
+  document.getElementById('resHoop').textContent   = hoopStress.toFixed(1);
+  document.getElementById('resAxial').textContent  = axialStress.toFixed(1);
+
+  // Status indicator
+  const ratio = Poper / mawp;
+  const dot   = document.getElementById('statusDot');
+  const txt   = document.getElementById('vesselStatusText');
+  dot.className = 'status-dot';
+  if (ratio <= 0.8) {
+    dot.classList.add('status-ok');
+    txt.textContent = `OK — operating at ${(ratio * 100).toFixed(0)}% of MAWP`;
+  } else if (ratio <= 1.0) {
+    dot.classList.add('status-warn');
+    txt.textContent = `Elevated — operating at ${(ratio * 100).toFixed(0)}% of MAWP`;
+  } else {
+    dot.classList.add('status-err');
+    txt.textContent = `Over-pressure — P_oper exceeds MAWP by ${((ratio - 1) * 100).toFixed(0)}%`;
+  }
+
+  drawVesselSvg(type, R, t, S, Ejt, Poper, mawp, hoopStress);
+}
+
+function drawVesselSvg(type, R, t, S, Ejt, Poper, mawp, hoopStress) {
+  const svg = clearSvg('vesselSvg');
+  const cx = 300, cy = 230;
+  const maxR = 185;
+  const scale = Math.min(maxR / (R + t + 10), 1.0);
+  const ri = R * scale;       // inner radius (px)
+  const ro = (R + t) * scale; // outer radius (px)
+
+  const ratio = Poper / mawp;
+  const color = ratio <= 0.8 ? '#22c55e' : ratio <= 1.0 ? '#f59e0b' : '#ef4444';
+  const alpha = (0.35 + 0.45 * Math.min(ratio, 1.2)).toFixed(2);
+
+  // Arrowhead marker for pressure vectors
+  const defs = el('defs', {});
+  const marker = el('marker', {
+    id: 'pressArrow', markerWidth: 7, markerHeight: 7,
+    refX: 5, refY: 3, orient: 'auto'
+  });
+  marker.appendChild(el('path', {d: 'M0,0 L0,6 L7,3 z', fill: 'rgba(168,85,247,0.45)'}));
+  defs.appendChild(marker);
+  svg.appendChild(defs);
+
+  if (type === 'cyl') {
+    // Top-view: annular cross-section (ring)
+    svg.appendChild(el('circle', {cx, cy, r: ro, fill: color, opacity: alpha}));
+    svg.appendChild(el('circle', {cx, cy, r: ri, fill: '#1a1a1f'}));
+    svg.appendChild(el('circle', {cx, cy, r: ro, fill: 'none', stroke: '#a855f7', 'stroke-width': 1.5}));
+    svg.appendChild(el('circle', {cx, cy, r: ri, fill: 'none', stroke: 'rgba(168,85,247,0.4)', 'stroke-width': 1}));
+
+    // Dimension lines
+    addDimLine(svg, cx, cy, cx + ri, cy, `R = ${R} mm`, '#6b6485', 10, -10);
+    addDimLine(svg, cx + ri, cy - 6, cx + ro, cy - 6, `t = ${t} mm`, '#9990b8', 0, -10);
+
+    // Inward pressure arrows (8 directions)
+    for (let i = 0; i < 8; i++) {
+      const ang = (i / 8) * 2 * Math.PI;
+      const r1 = ri * 0.55, r2 = ri * 0.88;
+      svg.appendChild(el('line', {
+        x1: cx + r1 * Math.cos(ang), y1: cy + r1 * Math.sin(ang),
+        x2: cx + r2 * Math.cos(ang), y2: cy + r2 * Math.sin(ang),
+        stroke: 'rgba(168,85,247,0.35)', 'stroke-width': 1.5,
+        'marker-end': 'url(#pressArrow)'
+      }));
+    }
+
+    addAnnotation(svg, cx, cy + ro + 28, `Cylindrical Shell — Top View (Annular X-Section)`);
+
+  } else if (type === 'hemi') {
+    // Half-circle cross-section
+    const path = `M ${cx - ro} ${cy} A ${ro} ${ro} 0 0 1 ${cx + ro} ${cy} Z`;
+    svg.appendChild(el('path', {d: path, fill: color, opacity: alpha, stroke: '#a855f7', 'stroke-width': 1.5}));
+    const pathI = `M ${cx - ri} ${cy} A ${ri} ${ri} 0 0 1 ${cx + ri} ${cy} Z`;
+    svg.appendChild(el('path', {d: pathI, fill: '#1a1a1f', stroke: 'rgba(168,85,247,0.4)', 'stroke-width': 1}));
+    // Base plate
+    svg.appendChild(el('rect', {x: cx - ro, y: cy, width: ro * 2, height: 10, fill: '#3a3a4a', stroke: '#a855f7', 'stroke-width': 1}));
+
+    addDimLine(svg, cx - ro - 25, cy - ro, cx - ro - 25, cy, `R = ${R} mm`, '#6b6485', -28, ro / 2);
+    addAnnotation(svg, cx, cy + 36, `Hemispherical Head — Cross-Section`);
+
+    // Pressure arrows (inward, upper semicircle)
+    for (let i = 1; i < 8; i++) {
+      const ang = (i / 8) * Math.PI; // 0..π
+      const r1 = ri * 0.5, r2 = ri * 0.85;
+      svg.appendChild(el('line', {
+        x1: cx - r1 * Math.cos(ang), y1: cy - r1 * Math.sin(ang),
+        x2: cx - r2 * Math.cos(ang), y2: cy - r2 * Math.sin(ang),
+        stroke: 'rgba(168,85,247,0.35)', 'stroke-width': 1.5,
+        'marker-end': 'url(#pressArrow)'
+      }));
+    }
+
+  } else {
+    // 2:1 ellipsoidal — show side profile
+    const rya = ro * 0.5, ryi = ri * 0.5;
+    svg.appendChild(el('ellipse', {cx, cy, rx: ro, ry: rya, fill: color, opacity: alpha, stroke: '#a855f7', 'stroke-width': 1.5}));
+    svg.appendChild(el('ellipse', {cx, cy, rx: ri, ry: ryi, fill: '#1a1a1f', stroke: 'rgba(168,85,247,0.4)', 'stroke-width': 1}));
+    svg.appendChild(el('rect', {x: cx - ro, y: cy - 4, width: ro * 2, height: 8, fill: '#3a3a4a', opacity: '0.6'}));
+
+    addDimLine(svg, cx + ro + 15, cy, cx + ro + 15, cy - rya, `b = ${(R * 0.5).toFixed(0)} mm`, '#6b6485', 8, rya / 2);
+    addDimLine(svg, cx, cy + rya + 14, cx + ro, cy + rya + 14, `D = ${(R * 2).toFixed(0)} mm`, '#9990b8', -ro / 2, 0);
+    addAnnotation(svg, cx, cy + rya + 38, `2:1 Ellipsoidal Head — Profile View`);
+  }
+
+  // Bottom annotation bar
+  const annY = 440;
+  svg.appendChild(el('rect', {x: 20, y: annY - 16, width: 560, height: 30, rx: 4, fill: 'rgba(42,42,53,0.8)', stroke: 'rgba(168,85,247,0.15)', 'stroke-width': 1}));
+  svg.appendChild(el('text', {
+    x: 300, y: annY,
+    fill: '#9990b8', 'font-size': 11, 'text-anchor': 'middle'
+  }, `σ_hoop = ${hoopStress.toFixed(1)} MPa  ·  P_oper = ${Poper.toFixed(1)} MPa  ·  MAWP = ${mawp.toFixed(2)} MPa`));
+}
+
+function addDimLine(svg, x1, y1, x2, y2, label, color, dx, dy) {
+  const mx = (x1 + x2) / 2 + (dx || 0);
+  const my = (y1 + y2) / 2 + (dy || 0);
+  svg.appendChild(el('line', {x1, y1, x2, y2, stroke: color || '#6b6485', 'stroke-width': 1, 'stroke-dasharray': '3,2'}));
+  svg.appendChild(el('text', {
+    x: mx, y: my,
+    fill: color || '#6b6485', 'font-size': 10, 'text-anchor': 'middle'
+  }, label));
+}
+
+function addAnnotation(svg, x, y, text) {
+  svg.appendChild(el('text', {
+    x, y,
+    fill: '#6b6485', 'font-size': 11, 'text-anchor': 'middle', 'font-style': 'italic'
+  }, text));
+}
+
+// ============================================================
+// DASHBOARD
+// ============================================================
+let dashAnimated = false;
+
+function animateDashboard() {
+  if (dashAnimated) return;
+  dashAnimated = true;
+
+  // Animate bars
+  setTimeout(() => {
+    document.querySelectorAll('.bar-fill').forEach(bar => {
+      bar.style.width = bar.getAttribute('data-width');
+    });
+  }, 80);
+
+  // Count-up numbers
+  document.querySelectorAll('.count-up').forEach(el => {
+    const target   = parseFloat(el.getAttribute('data-target'));
+    const suffix   = el.getAttribute('data-suffix');
+    const duration = 1800;
+    const steps    = 60;
+    const stepVal  = target / steps;
+    let current    = 0;
+    const timer = setInterval(() => {
+      current += stepVal;
+      if (current >= target) { current = target; clearInterval(timer); }
+      el.textContent = (Number.isInteger(target)
+        ? Math.round(current)
+        : current.toFixed(1)) + suffix;
+    }, duration / steps);
+  });
+}
+
+// ============================================================
+// INIT
+// ============================================================
+updateBeam();
+updateVessel();
+</script>
+</body>
+</html>
