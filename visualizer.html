@@ -231,6 +231,62 @@ svg text { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-seri
   min-width: 0;
 }
 .bar-fill span { font-size: 0.7rem; font-weight: 600; color: #fff; white-space: nowrap; }
+
+/* ── PROJECT GENERATOR ──────────────────────────────────────── */
+.form-group input[type=text],
+.form-group textarea {
+  width: 100%;
+  background: var(--bg3); border: 1px solid var(--charcoal);
+  border-radius: 4px; color: var(--text);
+  font-size: 0.85rem; padding: 0.5rem 0.7rem;
+  outline: none; transition: border-color 0.2s;
+  font-family: inherit;
+}
+.form-group input[type=text]:focus,
+.form-group textarea:focus { border-color: var(--purple-border); }
+.form-group textarea { resize: vertical; min-height: 70px; }
+
+.gen-layout {
+  display: grid;
+  grid-template-columns: 280px 1fr;
+  gap: 2rem; align-items: start;
+}
+@media (max-width: 900px) { .gen-layout { grid-template-columns: 1fr; } }
+
+.gen-btn {
+  width: 100%; padding: 0.7rem 1rem;
+  background: var(--purple-dim); border: none;
+  color: #fff; border-radius: 4px;
+  font-size: 0.75rem; letter-spacing: 0.07em; text-transform: uppercase;
+  cursor: pointer; font-weight: 700;
+  transition: background 0.2s; margin-top: 1rem; display: block;
+}
+.gen-btn:hover { background: var(--purple); }
+.gen-btn.secondary {
+  background: transparent;
+  border: 1px solid var(--purple-border);
+  color: var(--purple-light);
+  margin-top: 0.5rem;
+}
+.gen-btn.secondary:hover { background: rgba(168,85,247,0.08); }
+
+.spec-sheet-hint {
+  display: flex; align-items: center; justify-content: center;
+  min-height: 260px;
+  color: var(--text-dim); font-size: 0.88rem; text-align: center;
+}
+
+@media print {
+  body * { visibility: hidden !important; }
+  #specPreviewWrap, #specPreviewWrap * { visibility: visible !important; }
+  #specPreviewWrap {
+    position: fixed; top: 0; left: 0;
+    width: 100vw; height: 100vh;
+    background: #fff !important; padding: 0 !important;
+    display: block !important;
+  }
+  #specSheetSvg { width: 100% !important; height: 100% !important; }
+}
 </style>
 </head>
 <body>
@@ -256,6 +312,7 @@ svg text { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-seri
   <button class="tab-btn active" onclick="switchTab('beam',this)">&#9651; Beam Analysis</button>
   <button class="tab-btn" onclick="switchTab('vessel',this)">&#9711; Pressure Vessel</button>
   <button class="tab-btn" onclick="switchTab('dashboard',this)">&#9638; Impact Dashboard</button>
+  <button class="tab-btn" onclick="switchTab('generator',this)">&#9998; Project Generator</button>
 </div>
 
 <!-- ======================================================= -->
@@ -564,6 +621,72 @@ svg text { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-seri
         </div>
       </div>
     </div>
+  </div>
+</div>
+
+<!-- ======================================================= -->
+<!-- PROJECT GENERATOR                                       -->
+<!-- ======================================================= -->
+<div id="panel-generator" class="panel">
+  <div class="gen-layout">
+
+    <!-- Controls -->
+    <div>
+      <div class="controls-card">
+        <h3>Project Details</h3>
+
+        <div class="form-group">
+          <label>Project Type</label>
+          <select id="genType" onchange="onGenTypeChange()">
+            <option value="beam">Structural Beam</option>
+            <option value="vessel">Pressure Vessel</option>
+            <option value="frame">Structural Frame</option>
+            <option value="custom">Custom Component</option>
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label>Project / Description</label>
+          <input type="text" id="genProjName" placeholder="e.g. Mezzanine Beam B-1">
+        </div>
+
+        <div class="form-group">
+          <label>Drawing No.</label>
+          <input type="text" id="genDrawNo" placeholder="DWG-001">
+        </div>
+
+        <div class="form-group">
+          <label>Client / Company</label>
+          <input type="text" id="genClient" placeholder="Client Name">
+        </div>
+
+        <div class="form-group">
+          <label>Engineer</label>
+          <input type="text" id="genEngineer" value="J. Omeire, P.Eng.">
+        </div>
+
+        <!-- Dynamic type-specific params injected here -->
+        <div id="genParams"></div>
+
+        <button class="gen-btn" onclick="generateProject()">&#9650;&nbsp; Generate Specification</button>
+        <button class="gen-btn secondary" onclick="exportProjectPDF()">&#8659;&nbsp; Export / Print PDF</button>
+      </div>
+    </div>
+
+    <!-- Preview -->
+    <div>
+      <div class="viz-card">
+        <div class="viz-label">Generated Specification Sheet</div>
+        <div id="specSheetPlaceholder" class="spec-sheet-hint">
+          Fill in project details and click&nbsp;<strong style="color:var(--purple-light)">Generate Specification</strong>
+        </div>
+        <div id="specPreviewWrap" style="display:none;background:#c8c8c8;border-radius:4px;padding:0.6rem;">
+          <svg id="specSheetSvg" width="100%" viewBox="0 0 1122 794"
+               preserveAspectRatio="xMidYMid meet" style="display:block;background:#fff;"></svg>
+        </div>
+      </div>
+    </div>
+
   </div>
 </div>
 
@@ -1042,10 +1165,640 @@ function animateDashboard() {
 }
 
 // ============================================================
+// PROJECT GENERATOR
+// ============================================================
+const GW = 1122, GH = 794, GM = 15, GTH = 112, GNW = 215;
+
+const BEAM_PARAMS_HTML = `
+<div class="form-group">
+  <label>Beam Configuration</label>
+  <select id="gBeamType">
+    <option value="ss">Simply Supported — Point Load</option>
+    <option value="ss-udl">Simply Supported — UDL</option>
+    <option value="cant">Cantilever — Point Load</option>
+  </select>
+</div>
+<div class="form-group">
+  <label>Span (L) <span class="val-display" id="gLenVal">6.0 m</span></label>
+  <input type="range" id="gBeamLen" min="1" max="20" step="0.5" value="6"
+    oninput="document.getElementById('gLenVal').textContent=this.value+' m'">
+</div>
+<div class="form-group">
+  <label>Load <span class="val-display" id="gLoadVal">25 kN</span></label>
+  <input type="range" id="gBeamLoad" min="1" max="500" step="1" value="25"
+    oninput="document.getElementById('gLoadVal').textContent=this.value+' kN'">
+</div>
+<div class="form-group">
+  <label>Material (E)</label>
+  <select id="gBeamMat">
+    <option value="200|Steel A992">Steel A992 — 200 GPa</option>
+    <option value="70|Aluminum 6061">Aluminum 6061 — 70 GPa</option>
+    <option value="110|Titanium Ti-6Al-4V">Titanium Ti-6Al-4V — 110 GPa</option>
+  </select>
+</div>
+<div class="form-group">
+  <label>Section (I)</label>
+  <select id="gBeamSec">
+    <option value="45.5e-6|W200×46">W200×46 — I = 45.5×10⁻⁶ m⁴</option>
+    <option value="274e-6|W310×60">W310×60 — I = 274×10⁻⁶ m⁴</option>
+    <option value="5.28e-6|W150×24">W150×24 — I = 5.28×10⁻⁶ m⁴</option>
+  </select>
+</div>
+<div class="form-group">
+  <label>Yield Strength (Fy)</label>
+  <select id="gBeamFy">
+    <option value="345">345 MPa — A992</option>
+    <option value="250">250 MPa — A36</option>
+    <option value="275">275 MPa — S275</option>
+  </select>
+</div>`;
+
+const VESSEL_PARAMS_HTML = `
+<div class="form-group">
+  <label>Component Geometry</label>
+  <select id="gVesType">
+    <option value="cyl">Cylindrical Shell</option>
+    <option value="hemi">Hemispherical Head</option>
+    <option value="ellips">2:1 Ellipsoidal Head</option>
+  </select>
+</div>
+<div class="form-group">
+  <label>Inner Radius (R) <span class="val-display" id="gVRadVal">600 mm</span></label>
+  <input type="range" id="gVRad" min="50" max="2000" step="25" value="600"
+    oninput="document.getElementById('gVRadVal').textContent=this.value+' mm'">
+</div>
+<div class="form-group">
+  <label>Wall Thickness (t) <span class="val-display" id="gVThkVal">30 mm</span></label>
+  <input type="range" id="gVThk" min="3" max="150" step="1" value="30"
+    oninput="document.getElementById('gVThkVal').textContent=this.value+' mm'">
+</div>
+<div class="form-group">
+  <label>Operating Pressure <span class="val-display" id="gVPressVal">8.0 MPa</span></label>
+  <input type="range" id="gVPress" min="0.5" max="30" step="0.5" value="8"
+    oninput="document.getElementById('gVPressVal').textContent=parseFloat(this.value).toFixed(1)+' MPa'">
+</div>
+<div class="form-group">
+  <label>Allowable Stress (S)</label>
+  <select id="gVMat">
+    <option value="138|SA-516 Gr.70 @ 250°C">SA-516 Gr.70 @ 250°C — 138 MPa</option>
+    <option value="165|SA-516 Gr.70 @ RT">SA-516 Gr.70 @ RT — 165 MPa</option>
+    <option value="120|SA-240 304 SS @ 300°C">SA-240 304 SS @ 300°C — 120 MPa</option>
+  </select>
+</div>
+<div class="form-group">
+  <label>Design Code</label>
+  <select id="gVCode">
+    <option value="ASME BPVC VIII-1">ASME BPVC Section VIII, Div. 1</option>
+    <option value="ASME BPVC VIII-2">ASME BPVC Section VIII, Div. 2</option>
+    <option value="EN 13445">EN 13445 Unfired Pressure Vessels</option>
+  </select>
+</div>`;
+
+const FRAME_PARAMS_HTML = `
+<div class="form-group">
+  <label>No. of Bays <span class="val-display" id="gFBaysVal">3</span></label>
+  <input type="range" id="gFBays" min="1" max="8" step="1" value="3"
+    oninput="document.getElementById('gFBaysVal').textContent=this.value">
+</div>
+<div class="form-group">
+  <label>Bay Width <span class="val-display" id="gFBayWVal">6.0 m</span></label>
+  <input type="range" id="gFBayW" min="2" max="15" step="0.5" value="6"
+    oninput="document.getElementById('gFBayWVal').textContent=this.value+' m'">
+</div>
+<div class="form-group">
+  <label>No. of Storeys <span class="val-display" id="gFStorVal">2</span></label>
+  <input type="range" id="gFStor" min="1" max="6" step="1" value="2"
+    oninput="document.getElementById('gFStorVal').textContent=this.value">
+</div>
+<div class="form-group">
+  <label>Storey Height <span class="val-display" id="gFHVal">3.5 m</span></label>
+  <input type="range" id="gFH" min="2" max="8" step="0.25" value="3.5"
+    oninput="document.getElementById('gFHVal').textContent=parseFloat(this.value).toFixed(2)+' m'">
+</div>
+<div class="form-group">
+  <label>Floor Load (UDL) <span class="val-display" id="gFLoadVal">5.0 kPa</span></label>
+  <input type="range" id="gFLoad" min="1" max="20" step="0.5" value="5"
+    oninput="document.getElementById('gFLoadVal').textContent=parseFloat(this.value).toFixed(1)+' kPa'">
+</div>
+<div class="form-group">
+  <label>Steel Grade</label>
+  <select id="gFGrade">
+    <option value="ASTM A992|345">ASTM A992 — Fy = 345 MPa</option>
+    <option value="ASTM A36|250">ASTM A36 — Fy = 250 MPa</option>
+    <option value="S355|355">S355 — Fy = 355 MPa</option>
+  </select>
+</div>`;
+
+const CUSTOM_PARAMS_HTML = `
+<div class="form-group">
+  <label>Component Name</label>
+  <input type="text" id="gCustName" placeholder="e.g. Lifting Lug, Bracket…">
+</div>
+<div class="form-group">
+  <label>Design Standard</label>
+  <select id="gCustCode">
+    <option value="ASME BPVC">ASME BPVC</option>
+    <option value="AISC 360">AISC 360</option>
+    <option value="CSA S16">CSA S16</option>
+    <option value="ISO 4301">ISO 4301</option>
+    <option value="Client Specification">Client Specification</option>
+  </select>
+</div>
+<div class="form-group">
+  <label>Material</label>
+  <input type="text" id="gCustMat" placeholder="e.g. SA-516 Gr.70, A992…">
+</div>
+<div class="form-group">
+  <label>Operating Conditions</label>
+  <input type="text" id="gCustCond" placeholder="e.g. 15 MPa, 300°C…">
+</div>
+<div class="form-group">
+  <label>Special Notes / Requirements</label>
+  <textarea id="gCustNotes" placeholder="Additional design requirements…"></textarea>
+</div>`;
+
+function onGenTypeChange() {
+  const type = document.getElementById('genType').value;
+  const map = { beam: BEAM_PARAMS_HTML, vessel: VESSEL_PARAMS_HTML, frame: FRAME_PARAMS_HTML, custom: CUSTOM_PARAMS_HTML };
+  document.getElementById('genParams').innerHTML = map[type] || '';
+}
+
+// ── SVG helpers (shared constants) ──
+function gSvgText(svg, x, y, txt, opts) {
+  const defaults = { fill: '#111', 'font-size': 9, 'font-family': 'monospace', 'text-anchor': 'start' };
+  return svg.appendChild(el('text', Object.assign(defaults, { x, y }, opts), txt));
+}
+
+function drawTitleBlock(svg, meta) {
+  const { projName, drawNo, client, engineer, date, stdLabel } = meta;
+  const tbY = GH - GM - GTH;
+  const x0 = GM + 5, x1 = GW - GM - 5;
+  const tbW = x1 - x0;
+
+  svg.appendChild(el('rect', { x: x0, y: tbY, width: tbW, height: GTH, fill: '#f2f2f2', stroke: '#111', 'stroke-width': 0.5 }));
+
+  const c1 = x0 + 155, c2 = c1 + 310, c3 = c2 + 180, c4 = c3 + 90;
+  const row2 = tbY + GTH * 0.38, row3 = tbY + GTH * 0.67;
+
+  // Vertical dividers
+  [c1, c2, c3, c4].forEach(x =>
+    svg.appendChild(el('line', { x1: x, y1: tbY, x2: x, y2: GH - GM - 5, stroke: '#444', 'stroke-width': 0.8 }))
+  );
+  // Horizontal dividers
+  [[x0, c1], [c1, c2], [c2, x1]].forEach(([xa, xb]) =>
+    svg.appendChild(el('line', { x1: xa, y1: row2, x2: xb, y2: row2, stroke: '#444', 'stroke-width': 0.6 }))
+  );
+  [[c2, x1]].forEach(([xa, xb]) =>
+    svg.appendChild(el('line', { x1: xa, y1: row3, x2: xb, y2: row3, stroke: '#444', 'stroke-width': 0.6 }))
+  );
+
+  // Company block
+  gSvgText(svg, x0 + 78, tbY + 28, 'JO ENGINEERING', { 'font-size': 13, 'font-weight': 'bold', 'text-anchor': 'middle', fill: '#111' });
+  gSvgText(svg, x0 + 78, tbY + 42, 'MECHANICAL · NUCLEAR · AUTOMOTIVE', { 'font-size': 6.5, 'text-anchor': 'middle', fill: '#666' });
+  tbField(svg, x0 + 6, row2 + 4, 'CLIENT', client || '—');
+
+  // Project info
+  tbField(svg, c1 + 6, tbY + 4,  'PROJECT / DESCRIPTION', projName || 'Untitled');
+  tbField(svg, c1 + 6, row2 + 4, 'ENGINEER', engineer || '—');
+
+  // Right cells
+  tbField(svg, c2 + 6, tbY + 4,  'DRAWING NO.',  drawNo || 'DWG-001');
+  tbField(svg, c3 + 6, tbY + 4,  'REV.',         'A');
+  tbField(svg, c4 + 6, tbY + 4,  'SHEET',        '1 OF 1');
+  tbField(svg, c2 + 6, row2 + 4, 'DATE',         date);
+  tbField(svg, c3 + 6, row2 + 4, 'SCALE',        'NTS');
+  tbField(svg, c4 + 6, row2 + 4, 'STATUS',       'IFR');
+  tbField(svg, c2 + 6, row3 + 4, 'STANDARD',     stdLabel);
+  tbField(svg, c3 + 6, row3 + 4, 'CHECKED',      '—');
+}
+
+function tbField(svg, x, y, label, value) {
+  gSvgText(svg, x, y + 9,  label, { 'font-size': 6, fill: '#888', 'font-weight': 'bold' });
+  gSvgText(svg, x, y + 20, String(value).substring(0, 36), { 'font-size': 8.5, fill: '#111' });
+}
+
+function drawSheetFrame(svg) {
+  // outer border
+  svg.appendChild(el('rect', { x: GM, y: GM, width: GW - 2*GM, height: GH - 2*GM, fill: 'none', stroke: '#111', 'stroke-width': 2.5 }));
+  // inner border
+  svg.appendChild(el('rect', { x: GM+5, y: GM+5, width: GW-2*GM-10, height: GH-2*GM-10, fill: 'none', stroke: '#111', 'stroke-width': 0.6 }));
+}
+
+function drawNotesColumn(svg, specs) {
+  const tbY = GH - GM - GTH;
+  const nx = GW - GM - GNW, ny = GM + 5;
+  const nw = GNW - 10, nh = tbY - ny;
+
+  // Header
+  svg.appendChild(el('rect', { x: nx, y: ny, width: nw, height: 20, fill: '#e8e8e8' }));
+  gSvgText(svg, nx + nw/2, ny + 14, 'DESIGN SPECIFICATIONS', { 'font-size': 8, 'font-weight': 'bold', 'text-anchor': 'middle', fill: '#111' });
+  svg.appendChild(el('line', { x1: nx, y1: ny + 20, x2: nx + nw, y2: ny + 20, stroke: '#444', 'stroke-width': 0.7 }));
+  // Left edge divider
+  svg.appendChild(el('line', { x1: nx, y1: ny, x2: nx, y2: tbY, stroke: '#555', 'stroke-width': 0.8 }));
+
+  const rowH = 24, maxRows = Math.floor((nh - 24) / rowH);
+  specs.slice(0, maxRows).forEach(([label, value], i) => {
+    const ry = ny + 20 + i * rowH;
+    if (i % 2 === 0) svg.appendChild(el('rect', { x: nx, y: ry, width: nw, height: rowH, fill: '#f7f7f7' }));
+    svg.appendChild(el('line', { x1: nx, y1: ry + rowH, x2: nx + nw, y2: ry + rowH, stroke: '#ddd', 'stroke-width': 0.5 }));
+    gSvgText(svg, nx + 5, ry + 10, label, { 'font-size': 6.5, fill: '#666', 'font-weight': 'bold' });
+    gSvgText(svg, nx + 5, ry + 20, String(value).substring(0, 28), { 'font-size': 8, fill: '#222' });
+  });
+}
+
+// ── Drawing area geometry ──
+function drawingArea() {
+  const tbY = GH - GM - GTH;
+  const nx = GW - GM - GNW;
+  return { x: GM + 10, y: GM + 10, w: nx - GM - 15, h: tbY - GM - 15 };
+}
+
+// ── PIN / ROLLER helpers ──
+function genPin(svg, cx, cy) {
+  svg.appendChild(el('polygon', { points: `${cx},${cy} ${cx-9},${cy+15} ${cx+9},${cy+15}`, fill: 'none', stroke: '#333', 'stroke-width': 1.2 }));
+  svg.appendChild(el('line', { x1: cx-13, y1: cy+15, x2: cx+13, y2: cy+15, stroke: '#333', 'stroke-width': 1.2 }));
+}
+function genRoller(svg, cx, cy) {
+  svg.appendChild(el('polygon', { points: `${cx},${cy} ${cx-9},${cy+13} ${cx+9},${cy+13}`, fill: 'none', stroke: '#333', 'stroke-width': 1.2 }));
+  svg.appendChild(el('circle', { cx, cy: cy+17, r: 4, fill: 'none', stroke: '#333', 'stroke-width': 1.2 }));
+  svg.appendChild(el('line', { x1: cx-13, y1: cy+21, x2: cx+13, y2: cy+21, stroke: '#333', 'stroke-width': 1.2 }));
+}
+function genFixed(svg, cx, cy) {
+  svg.appendChild(el('rect', { x: cx-18, y: cy-28, width: 18, height: 56, fill: '#ccc', stroke: '#333', 'stroke-width': 1 }));
+  for (let yi = cy-24; yi < cy+22; yi += 8)
+    svg.appendChild(el('line', { x1: cx-18, y1: yi, x2: cx-26, y2: yi+8, stroke: '#888', 'stroke-width': 0.8 }));
+}
+
+// ── BEAM ──
+function collectBeamGenData() {
+  const L = parseFloat(document.getElementById('gBeamLen').value);
+  const beamType = document.getElementById('gBeamType').value;
+  const P_kN = parseFloat(document.getElementById('gBeamLoad').value);
+  const matParts = document.getElementById('gBeamMat').value.split('|');
+  const secParts = document.getElementById('gBeamSec').value.split('|');
+  const Fy = parseFloat(document.getElementById('gBeamFy').value);
+  const E = parseFloat(matParts[0]) * 1e9;
+  const I = parseFloat(secParts[0]);
+  const P = P_kN * 1e3;
+  return { L, beamType, P_kN, P, E, I, Fy, matName: matParts[1], secName: secParts[1] };
+}
+
+function drawBeamGenSpec(svg, d) {
+  const da = drawingArea();
+  const { L, beamType, P_kN, P, E, I, Fy, matName, secName } = d;
+
+  // ── Beam calculations ──
+  let maxDefl, maxMoment, maxShear;
+  if (beamType === 'ss') {
+    maxDefl   = P * Math.pow(L, 3) / (48 * E * I);
+    maxMoment = P * L / 4;
+    maxShear  = P / 2;
+  } else if (beamType === 'ss-udl') {
+    const w = P;
+    maxDefl   = 5 * w * Math.pow(L, 4) / (384 * E * I);
+    maxMoment = w * L * L / 8;
+    maxShear  = w * L / 2;
+  } else {
+    maxDefl   = P * Math.pow(L, 3) / (3 * E * I);
+    maxMoment = P * L;
+    maxShear  = P;
+  }
+  const deflLimit = L / maxDefl;
+
+  // ── Layout ──
+  const bY  = da.y + da.h * 0.42;
+  const bX0 = da.x + 50, bX1 = da.x + da.w - 60;
+  const bW  = bX1 - bX0, bH = 14;
+
+  // Section title
+  gSvgText(svg, da.x, da.y + 14, `STRUCTURAL BEAM — ${beamType === 'cant' ? 'CANTILEVER' : 'SIMPLY SUPPORTED'}`, { 'font-size': 10, 'font-weight': 'bold', fill: '#222' });
+
+  // Beam body
+  svg.appendChild(el('rect', { x: bX0, y: bY - bH/2, width: bW, height: bH, fill: '#d8dce8', stroke: '#333', 'stroke-width': 1.5 }));
+  for (let xi = bX0 + 4; xi < bX1 - 4; xi += 12)
+    svg.appendChild(el('line', { x1: xi, y1: bY - bH/2, x2: xi + 8, y2: bY + bH/2, stroke: '#b0b4c4', 'stroke-width': 0.4 }));
+
+  // Supports
+  if (beamType === 'ss' || beamType === 'ss-udl') {
+    genPin(svg, bX0, bY + bH/2);
+    genRoller(svg, bX1, bY + bH/2);
+  } else {
+    genFixed(svg, bX0, bY);
+  }
+
+  // Load arrows
+  if (beamType === 'ss') {
+    const lx = bX0 + bW / 2;
+    svg.appendChild(el('line', { x1: lx, y1: bY - bH/2 - 32, x2: lx, y2: bY - bH/2 - 1, stroke: '#444', 'stroke-width': 2 }));
+    svg.appendChild(el('polygon', { points: `${lx},${bY-bH/2} ${lx-5},${bY-bH/2-10} ${lx+5},${bY-bH/2-10}`, fill: '#333' }));
+    gSvgText(svg, lx + 7, bY - bH/2 - 18, `P = ${P_kN} kN`, { 'font-size': 9, fill: '#333' });
+  } else if (beamType === 'ss-udl') {
+    for (let i = 0; i <= 8; i++) {
+      const lx = bX0 + i * bW / 8;
+      svg.appendChild(el('line', { x1: lx, y1: bY - bH/2 - 22, x2: lx, y2: bY - bH/2 - 1, stroke: '#555', 'stroke-width': 1.4 }));
+      svg.appendChild(el('polygon', { points: `${lx},${bY-bH/2} ${lx-4},${bY-bH/2-9} ${lx+4},${bY-bH/2-9}`, fill: '#333' }));
+    }
+    svg.appendChild(el('line', { x1: bX0, y1: bY - bH/2 - 22, x2: bX1, y2: bY - bH/2 - 22, stroke: '#555', 'stroke-width': 1.2 }));
+    gSvgText(svg, bX0 + bW/2, bY - bH/2 - 26, `w = ${P_kN} kN/m`, { 'font-size': 9, 'text-anchor': 'middle', fill: '#333' });
+  } else {
+    svg.appendChild(el('line', { x1: bX1, y1: bY - bH/2 - 32, x2: bX1, y2: bY - bH/2 - 1, stroke: '#444', 'stroke-width': 2 }));
+    svg.appendChild(el('polygon', { points: `${bX1},${bY-bH/2} ${bX1-5},${bY-bH/2-10} ${bX1+5},${bY-bH/2-10}`, fill: '#333' }));
+    gSvgText(svg, bX1 + 7, bY - bH/2 - 18, `P = ${P_kN} kN`, { 'font-size': 9, fill: '#333' });
+  }
+
+  // Span dimension line
+  const dimY = bY + bH/2 + 36;
+  svg.appendChild(el('line', { x1: bX0, y1: dimY, x2: bX1, y2: dimY, stroke: '#555', 'stroke-width': 0.8 }));
+  svg.appendChild(el('line', { x1: bX0, y1: dimY-5, x2: bX0, y2: dimY+5, stroke: '#555', 'stroke-width': 0.8 }));
+  svg.appendChild(el('line', { x1: bX1, y1: dimY-5, x2: bX1, y2: dimY+5, stroke: '#555', 'stroke-width': 0.8 }));
+  gSvgText(svg, (bX0+bX1)/2, dimY + 12, `L = ${L.toFixed(1)} m`, { 'font-size': 9, 'text-anchor': 'middle', fill: '#444' });
+
+  // Deflected shape
+  const dy0 = dimY + 30;
+  gSvgText(svg, bX0, dy0 - 6, 'DEFLECTED SHAPE (SCHEMATIC)', { 'font-size': 7, fill: '#777' });
+  svg.appendChild(el('line', { x1: bX0, y1: dy0, x2: bX1, y2: dy0, stroke: '#ccc', 'stroke-width': 0.6 }));
+  const N = 80, dAmp = 26;
+  const pts = Array.from({ length: N + 1 }, (_, i) => {
+    const x = i / N;
+    const px = bX0 + x * bW;
+    const fac = beamType === 'cant' ? x * x * (3 - x) / 2 : 4 * x * (1 - x);
+    return `${px.toFixed(1)},${(dy0 + fac * dAmp).toFixed(1)}`;
+  });
+  svg.appendChild(el('polyline', { points: pts.join(' '), fill: 'none', stroke: '#444', 'stroke-width': 1.5, 'stroke-dasharray': '5,3' }));
+
+  // Cross-section callout
+  const csX = da.x + da.w - 55, csY = da.y + 60;
+  gSvgText(svg, csX, csY - 10, 'SECTION', { 'font-size': 7, 'font-weight': 'bold', 'text-anchor': 'middle', fill: '#444' });
+  const fw = 34, th = 5, tw = 6, dep = 36;
+  const color = '#333';
+  [[csX - fw/2, csY - dep/2, fw, th], [csX - tw/2, csY - dep/2 + th, tw, dep - 2*th], [csX - fw/2, csY + dep/2 - th, fw, th]].forEach(([rx, ry, rw, rh]) =>
+    svg.appendChild(el('rect', { x: rx, y: ry, width: rw, height: rh, fill: '#d8dce8', stroke: color, 'stroke-width': 1 }))
+  );
+
+  return [
+    ['SPAN (L)',       `${L.toFixed(1)} m`],
+    ['CONFIGURATION', beamType === 'ss' ? 'SS Point Load' : beamType === 'ss-udl' ? 'SS UDL' : 'Cantilever Pt Load'],
+    ['APPLIED LOAD',  `${P_kN} kN${beamType === 'ss-udl' ? '/m' : ''}`],
+    ['MATERIAL',      matName],
+    ['SECTION',       secName],
+    ['E',             `${(E/1e9).toFixed(0)} GPa`],
+    ['I',             `${(I*1e6).toFixed(2)} ×10⁻⁶ m⁴`],
+    ['Fy',            `${Fy} MPa`],
+    ['MAX DEFLECTION',`${(maxDefl * 1e3).toFixed(2)} mm`],
+    ['DEFL. RATIO',   `L / ${Math.round(deflLimit)}`],
+    ['MAX MOMENT',    `${(maxMoment / 1e3).toFixed(2)} kN·m`],
+    ['MAX SHEAR',     `${(maxShear / 1e3).toFixed(2)} kN`],
+  ];
+}
+
+// ── VESSEL ──
+function collectVesselGenData() {
+  const vesType = document.getElementById('gVesType').value;
+  const R = parseFloat(document.getElementById('gVRad').value);
+  const t = parseFloat(document.getElementById('gVThk').value);
+  const Poper = parseFloat(document.getElementById('gVPress').value);
+  const matParts = document.getElementById('gVMat').value.split('|');
+  const code = document.getElementById('gVCode').value;
+  return { vesType, R, t, Poper, S: parseFloat(matParts[0]), matName: matParts[1], Ejt: 1.0, code };
+}
+
+function drawVesselGenSpec(svg, d) {
+  const da = drawingArea();
+  const { vesType, R, t, Poper, S, matName, Ejt, code } = d;
+
+  let mawp, tMin, hoopStress, axialStress;
+  if (vesType === 'cyl') {
+    mawp = S * Ejt * t / (R + 0.6 * t);
+    tMin = Poper * R / (S * Ejt - 0.6 * Poper);
+    hoopStress = Poper * R / t;
+    axialStress = Poper * R / (2 * t);
+  } else if (vesType === 'hemi') {
+    mawp = 2 * S * Ejt * t / (R + 0.2 * t);
+    tMin = Poper * R / (2 * S * Ejt - 0.2 * Poper);
+    hoopStress = Poper * R / (2 * t);
+    axialStress = hoopStress;
+  } else {
+    const D = 2 * R;
+    mawp = 2 * S * Ejt * t / (D + 1.2 * t);
+    tMin = Poper * D / (2 * S * Ejt - 0.2 * Poper);
+    hoopStress = Poper * D / (2 * t);
+    axialStress = Poper * D / (4 * t);
+  }
+  const ratio = Poper / mawp;
+  const ok = ratio <= 1.0;
+
+  gSvgText(svg, da.x, da.y + 14, `PRESSURE VESSEL — ${vesType === 'cyl' ? 'CYLINDRICAL SHELL' : vesType === 'hemi' ? 'HEMISPHERICAL HEAD' : '2:1 ELLIPSOIDAL HEAD'}`, { 'font-size': 10, 'font-weight': 'bold', fill: '#222' });
+
+  const cx = da.x + (da.w - GNW) * 0.45, cy = da.y + da.h * 0.44;
+  const maxRpx = Math.min(da.h * 0.32, 130);
+  const sc = Math.min(maxRpx / (R + t + 5), 1);
+  const ri = R * sc, ro = (R + t) * sc;
+  const lineColor = ok ? '#1a6e2e' : '#8a0000';
+
+  if (vesType === 'cyl') {
+    svg.appendChild(el('circle', { cx, cy, r: ro, fill: '#d8dce8', stroke: '#333', 'stroke-width': 1.5 }));
+    svg.appendChild(el('circle', { cx, cy, r: ri, fill: '#f5f5f5', stroke: '#555', 'stroke-width': 0.8 }));
+    svg.appendChild(el('line', { x1: cx, y1: cy, x2: cx + ri, y2: cy, stroke: '#888', 'stroke-width': 0.7, 'stroke-dasharray': '3,2' }));
+    gSvgText(svg, cx + ri/2 - 10, cy - 5, `R=${R}mm`, { 'font-size': 7.5, fill: '#555' });
+    svg.appendChild(el('line', { x1: cx + ri, y1: cy - 8, x2: cx + ro, y2: cy - 8, stroke: '#888', 'stroke-width': 0.7 }));
+    gSvgText(svg, cx + ri + 3, cy - 12, `t=${t}`, { 'font-size': 7, fill: '#555' });
+    gSvgText(svg, cx, cy + ro + 16, 'TOP VIEW — ANNULAR CROSS-SECTION', { 'font-size': 8, 'text-anchor': 'middle', fill: '#555' });
+  } else if (vesType === 'hemi') {
+    svg.appendChild(el('path', { d: `M ${cx-ro} ${cy} A ${ro} ${ro} 0 0 1 ${cx+ro} ${cy} Z`, fill: '#d8dce8', stroke: '#333', 'stroke-width': 1.5 }));
+    svg.appendChild(el('path', { d: `M ${cx-ri} ${cy} A ${ri} ${ri} 0 0 1 ${cx+ri} ${cy} Z`, fill: '#f5f5f5', stroke: '#555', 'stroke-width': 0.8 }));
+    svg.appendChild(el('rect', { x: cx - ro, y: cy, width: ro*2, height: 8, fill: '#bbb', stroke: '#333', 'stroke-width': 1 }));
+    gSvgText(svg, cx, cy + 26, 'ELEVATION — HEMISPHERICAL HEAD', { 'font-size': 8, 'text-anchor': 'middle', fill: '#555' });
+  } else {
+    const rya = ro * 0.5;
+    svg.appendChild(el('ellipse', { cx, cy, rx: ro, ry: rya, fill: '#d8dce8', stroke: '#333', 'stroke-width': 1.5 }));
+    svg.appendChild(el('ellipse', { cx, cy, rx: ri, ry: ri*0.5, fill: '#f5f5f5', stroke: '#555', 'stroke-width': 0.8 }));
+    gSvgText(svg, cx, cy + rya + 16, 'PROFILE — 2:1 ELLIPSOIDAL HEAD', { 'font-size': 8, 'text-anchor': 'middle', fill: '#555' });
+  }
+
+  // Status badge
+  const bw = 140, bh = 22, bx = cx - bw/2, by = da.y + da.h - 38;
+  svg.appendChild(el('rect', { x: bx, y: by, width: bw, height: bh, rx: 3, fill: ok ? '#e6f4ea' : '#fde8e8', stroke: lineColor, 'stroke-width': 1 }));
+  gSvgText(svg, cx, by + 15, ok ? `ACCEPTABLE — ${(ratio*100).toFixed(0)}% MAWP` : `OVER-PRESSURE — ${(ratio*100).toFixed(0)}% MAWP`, { 'font-size': 8.5, 'font-weight': 'bold', 'text-anchor': 'middle', fill: lineColor });
+
+  return [
+    ['COMPONENT',      vesType === 'cyl' ? 'Cylindrical Shell' : vesType === 'hemi' ? 'Hemispherical Head' : '2:1 Ellipsoidal Head'],
+    ['DESIGN CODE',    code],
+    ['MATERIAL',       matName],
+    ['INNER RADIUS R', `${R} mm`],
+    ['WALL THICK. t',  `${t} mm`],
+    ['ALLOW. STRESS S',`${S} MPa`],
+    ['JOINT EFF. E',   `${Ejt.toFixed(2)}`],
+    ['OPER. PRESSURE', `${Poper.toFixed(1)} MPa`],
+    ['MAWP',           `${mawp.toFixed(2)} MPa`],
+    ['MIN t REQUIRED', `${Math.max(tMin, 0).toFixed(1)} mm`],
+    ['HOOP STRESS σ_h',`${hoopStress.toFixed(1)} MPa`],
+    ['AXIAL STRESS σ_a',`${axialStress.toFixed(1)} MPa`],
+    ['STATUS',         ok ? `OK — ${(ratio*100).toFixed(0)}% of MAWP` : `EXCEEDS MAWP`],
+  ];
+}
+
+// ── FRAME ──
+function collectFrameGenData() {
+  const gradeParts = document.getElementById('gFGrade').value.split('|');
+  return {
+    bays:     parseInt(document.getElementById('gFBays').value),
+    bayW:     parseFloat(document.getElementById('gFBayW').value),
+    storeys:  parseInt(document.getElementById('gFStor').value),
+    storeyH:  parseFloat(document.getElementById('gFH').value),
+    load:     parseFloat(document.getElementById('gFLoad').value),
+    grade:    gradeParts[0],
+    Fy:       parseInt(gradeParts[1]),
+  };
+}
+
+function drawFrameGenSpec(svg, d) {
+  const da = drawingArea();
+  const { bays, bayW, storeys, storeyH, load, grade, Fy } = d;
+
+  gSvgText(svg, da.x, da.y + 14, `STRUCTURAL FRAME — ${bays}-BAY × ${storeys}-STOREY MOMENT FRAME`, { 'font-size': 10, 'font-weight': 'bold', fill: '#222' });
+
+  const totalW = bays * bayW, totalH = storeys * storeyH;
+  const sc = Math.min((da.w * 0.65) / totalW, (da.h * 0.62) / totalH, 45);
+  const fw = totalW * sc, fh = totalH * sc;
+  const ox = da.x + (da.w - GNW/2 - fw) / 2 + 10;
+  const oy = da.y + da.h * 0.82;
+
+  // Columns
+  for (let i = 0; i <= bays; i++) {
+    const cx = ox + i * bayW * sc;
+    svg.appendChild(el('line', { x1: cx, y1: oy, x2: cx, y2: oy - fh, stroke: '#333', 'stroke-width': 3 }));
+    svg.appendChild(el('rect', { x: cx - 7, y: oy, width: 14, height: 7, fill: '#555' }));
+    svg.appendChild(el('line', { x1: cx - 12, y1: oy + 7, x2: cx + 12, y2: oy + 7, stroke: '#333', 'stroke-width': 1.2 }));
+    for (let k = -3; k <= 3; k++)
+      svg.appendChild(el('line', { x1: cx + k * 4, y1: oy + 7, x2: cx + k * 4 + 4, y2: oy + 13, stroke: '#777', 'stroke-width': 0.8 }));
+  }
+
+  // Beams + UDL arrows per storey
+  for (let j = 0; j < storeys; j++) {
+    const fy = oy - (j + 1) * storeyH * sc;
+    for (let i = 0; i < bays; i++) {
+      const bx = ox + i * bayW * sc;
+      svg.appendChild(el('line', { x1: bx, y1: fy, x2: bx + bayW * sc, y2: fy, stroke: '#333', 'stroke-width': 2.5 }));
+      for (let k = 0; k <= 4; k++) {
+        const ax = bx + k * bayW * sc / 4;
+        svg.appendChild(el('line', { x1: ax, y1: fy - 13, x2: ax, y2: fy - 1, stroke: '#666', 'stroke-width': 1 }));
+        svg.appendChild(el('polygon', { points: `${ax},${fy} ${ax-3},${fy-7} ${ax+3},${fy-7}`, fill: '#555' }));
+      }
+      if (i === 0) svg.appendChild(el('line', { x1: bx, y1: fy - 13, x2: bx + bayW * sc, y2: fy - 13, stroke: '#666', 'stroke-width': 0.9 }));
+    }
+    gSvgText(svg, ox - 8, fy + 4, `FL${j+1}`, { 'font-size': 7, 'text-anchor': 'end', fill: '#666' });
+  }
+
+  // Bay dimension lines
+  const dimY = oy + 26;
+  for (let i = 0; i < bays; i++) {
+    const d0 = ox + i * bayW * sc, d1 = ox + (i+1) * bayW * sc;
+    svg.appendChild(el('line', { x1: d0, y1: dimY, x2: d1, y2: dimY, stroke: '#666', 'stroke-width': 0.7 }));
+    [d0, d1].forEach(x => svg.appendChild(el('line', { x1: x, y1: dimY-3, x2: x, y2: dimY+3, stroke: '#666', 'stroke-width': 0.7 })));
+    gSvgText(svg, (d0+d1)/2, dimY + 11, `${bayW}m`, { 'font-size': 7, 'text-anchor': 'middle', fill: '#555' });
+  }
+
+  // Storey height dims
+  const dimX = ox + fw + 18;
+  for (let j = 0; j < storeys; j++) {
+    const y0 = oy - (j+1)*storeyH*sc, y1 = oy - j*storeyH*sc;
+    svg.appendChild(el('line', { x1: dimX, y1: y0, x2: dimX, y2: y1, stroke: '#666', 'stroke-width': 0.7 }));
+    gSvgText(svg, dimX + 4, (y0+y1)/2 + 4, `${storeyH}m`, { 'font-size': 7, fill: '#555' });
+  }
+
+  const beamLoad = load * bayW;
+  return [
+    ['FRAME TYPE',    `${bays}-Bay, ${storeys}-Storey`],
+    ['TOTAL WIDTH',   `${(bays * bayW).toFixed(1)} m`],
+    ['TOTAL HEIGHT',  `${(storeys * storeyH).toFixed(1)} m`],
+    ['BAY WIDTH',     `${bayW.toFixed(1)} m`],
+    ['STOREY HEIGHT', `${storeyH.toFixed(1)} m`],
+    ['STEEL GRADE',   grade],
+    ['Fy',            `${Fy} MPa`],
+    ['FLOOR LOAD w',  `${load.toFixed(1)} kPa`],
+    ['BEAM TRIB. UDL',`${beamLoad.toFixed(1)} kN/m`],
+    ['FRAME SYSTEM',  'Moment-Resisting Frame'],
+    ['DESIGN CODE',   'AISC 360 / ASCE 7-22'],
+  ];
+}
+
+// ── CUSTOM ──
+function collectCustomGenData() {
+  return {
+    name:       document.getElementById('gCustName').value,
+    code:       document.getElementById('gCustCode').value,
+    material:   document.getElementById('gCustMat').value,
+    conditions: document.getElementById('gCustCond').value,
+    notes:      document.getElementById('gCustNotes').value,
+  };
+}
+
+function drawCustomGenSpec(svg, d) {
+  const da = drawingArea();
+  const { name, code, material, conditions, notes } = d;
+
+  gSvgText(svg, da.x, da.y + 14, (name || 'CUSTOM COMPONENT').toUpperCase(), { 'font-size': 10, 'font-weight': 'bold', fill: '#222' });
+
+  // Isometric block schematic
+  const cx = da.x + (da.w - GNW/2) * 0.42, cy = da.y + da.h * 0.42;
+  const bw = 130, bh = 85, depth = 35;
+  svg.appendChild(el('rect', { x: cx-bw/2, y: cy-bh/2, width: bw, height: bh, fill: '#d8dce8', stroke: '#333', 'stroke-width': 1.5 }));
+  svg.appendChild(el('polygon', { points: `${cx-bw/2},${cy-bh/2} ${cx-bw/2+depth},${cy-bh/2-depth*0.5} ${cx+bw/2+depth},${cy-bh/2-depth*0.5} ${cx+bw/2},${cy-bh/2}`, fill: '#c0c4d0', stroke: '#333', 'stroke-width': 1.2 }));
+  svg.appendChild(el('polygon', { points: `${cx+bw/2},${cy-bh/2} ${cx+bw/2+depth},${cy-bh/2-depth*0.5} ${cx+bw/2+depth},${cy+bh/2-depth*0.5} ${cx+bw/2},${cy+bh/2}`, fill: '#b0b4c0', stroke: '#333', 'stroke-width': 1.2 }));
+  gSvgText(svg, cx, cy + 4, name || 'COMPONENT', { 'font-size': 10, 'font-weight': 'bold', 'text-anchor': 'middle', fill: '#333' });
+  gSvgText(svg, cx, cy + bh/2 + 20, 'SCHEMATIC — NOT TO SCALE', { 'font-size': 7.5, 'text-anchor': 'middle', fill: '#666' });
+
+  const rows = [
+    ['COMPONENT', name || '—'],
+    ['DESIGN CODE', code],
+    ['MATERIAL', material || '—'],
+    ['OPER. CONDITIONS', conditions || '—'],
+  ];
+  if (notes) notes.split('\n').filter(l => l.trim()).forEach((l, i) => rows.push([`NOTE ${i+1}`, l.trim()]));
+  return rows;
+}
+
+// ── MAIN GENERATE ──
+function generateProject() {
+  const type     = document.getElementById('genType').value;
+  const projName = document.getElementById('genProjName').value.trim();
+  const drawNo   = document.getElementById('genDrawNo').value.trim();
+  const client   = document.getElementById('genClient').value.trim();
+  const engineer = document.getElementById('genEngineer').value.trim();
+  const date     = new Date().toLocaleDateString('en-CA');
+  const stdMap   = { beam: 'AISC 360 / CSA S16', vessel: 'ASME BPVC VIII-1', frame: 'AISC 360 / ASCE 7', custom: 'Per Design Basis' };
+
+  const svg = clearSvg('specSheetSvg');
+  svg.appendChild(el('rect', { x: 0, y: 0, width: GW, height: GH, fill: '#ffffff' }));
+  drawSheetFrame(svg);
+  drawTitleBlock(svg, { projName, drawNo, client, engineer, date, stdLabel: stdMap[type] });
+
+  let specs;
+  if (type === 'beam')        specs = drawBeamGenSpec(svg, collectBeamGenData());
+  else if (type === 'vessel') specs = drawVesselGenSpec(svg, collectVesselGenData());
+  else if (type === 'frame')  specs = drawFrameGenSpec(svg, collectFrameGenData());
+  else                        specs = drawCustomGenSpec(svg, collectCustomGenData());
+
+  drawNotesColumn(svg, specs);
+
+  document.getElementById('specSheetPlaceholder').style.display = 'none';
+  document.getElementById('specPreviewWrap').style.display = 'block';
+}
+
+function exportProjectPDF() {
+  if (document.getElementById('specPreviewWrap').style.display === 'none') {
+    alert('Generate a specification first.');
+    return;
+  }
+  window.print();
+}
+
+// ============================================================
 // INIT
 // ============================================================
 updateBeam();
 updateVessel();
+onGenTypeChange();
 </script>
 </body>
 </html>
